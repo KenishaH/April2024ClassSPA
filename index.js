@@ -3,6 +3,7 @@ import * as store from "./store";
 
 import Navigo from "navigo";
 import { camelCase } from "lodash";
+import axios from "axios";
 
 const router = new Navigo("/");
 
@@ -25,6 +26,41 @@ function afterRender() {
   });
 }
 
+router.hooks({
+  before: (done, params) => {
+    // We need to know what view we are on to know what data to fetch
+    const view = params && params.data && params.data.view ? camelCase(params.data.view) : "home";
+    // Add a switch case statement to handle multiple routes
+    switch (view) {
+      // Add a case for each view that needs data from an API
+      case "pizza":
+        // New Axios get request utilizing already made environment variable
+        axios
+          .get(`https://sc-pizza-api.onrender.com/pizzas`)
+          .then(response => {
+            // We need to store the response to the state, in the next step but in the meantime let's see what it looks like so that we know what to store from the response.
+            console.log("response", response);
+            store.pizza.pizzas = response.data;
+            done();
+          })
+          .catch((error) => {
+            console.log("It puked", error);
+            done();
+          });
+          break;
+      default :
+        done();
+    }
+  },
+  already: (params) => {
+    const view = params && params.data && params.data.view ? camel(params.data.view) : "home";
+
+    render(store[view]);
+  }
+});
+
+
+
 router
 .on({
   "/": () => render(),
@@ -33,7 +69,7 @@ router
   // This reduces the number of checks that need to be performed
   ":view": ({ data, params }) => {
     // Change the :view data element to camel case and remove any dashes (support for multi-word views)
-      const view = data.view ? camelCase(data.view) : "home";
+      const view = data?.view ? camelCase(data.view) : "home";
     if (view in store) {
       render(store[view]);
     } else {
